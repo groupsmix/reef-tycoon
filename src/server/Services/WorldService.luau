@@ -35,8 +35,13 @@ local PLOT_FORWARD_SHIFT = 30 -- how far plots extend outward
 local PLOT_HEIGHT_Y = 0
 local PLOTS = Config.SERVER_SIZE
 
+-- Plots are built lazily: the central lobby is created on Init() but
+-- per-player plots are only built when a player joins (or pulled from
+-- the freePlots pool if a previous player has since left).
 local plotByUserId: { [number]: Model } = {}
 local freePlots: { Model } = {}
+local plotsBuiltCount = 0
+local nextPlotIndex = 1
 
 local function makePart(props: { [string]: any }): BasePart
 	local part = Instance.new(props.shape == "Cylinder" and "Part" or "Part")
@@ -300,8 +305,22 @@ function WorldService.GetPlotPedestal(plot: Model, pedestalIndex: number): BaseP
 	return pedestals:FindFirstChild("Pedestal_" .. pedestalIndex) :: BasePart?
 end
 
+local function takeOrBuildPlot(): Model?
+	local pooled = table.remove(freePlots, 1)
+	if pooled then
+		return pooled
+	end
+	if plotsBuiltCount >= PLOTS then
+		return nil
+	end
+	local plot = buildPlot(nextPlotIndex)
+	nextPlotIndex += 1
+	plotsBuiltCount += 1
+	return plot
+end
+
 function WorldService._claimPlot(player: Player)
-	local plot = table.remove(freePlots, 1)
+	local plot = takeOrBuildPlot()
 	if not plot then
 		warn(("[WorldService] no free plot for %s; server too full?"):format(player.Name))
 		return
@@ -391,10 +410,12 @@ function WorldService.Init()
 	end
 	setLighting()
 	buildLobbyCenter()
+	-- Plots build lazily as players join. We do NOT pre-build all 12
+	-- plots here — most servers have 1-3 players and would otherwise
+	-- spend the rest of the session paying for ~100 unused parts.
 	freePlots = {}
-	for i = 1, PLOTS do
-		table.insert(freePlots, buildPlot(i))
-	end
+	plotsBuiltCount = 0
+	nextPlotIndex = 1
 	Players.PlayerAdded:Connect(WorldService._claimPlot)
 	Players.PlayerRemoving:Connect(WorldService._releasePlot)
 	for _, p in Players:GetPlayers() do

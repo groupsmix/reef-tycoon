@@ -22,6 +22,11 @@ local HudController = require(Controllers:WaitForChild("HudController"))
 local ShopController = require(Controllers:WaitForChild("ShopController"))
 local InventoryController = require(Controllers:WaitForChild("InventoryController"))
 local GachaController = require(Controllers:WaitForChild("GachaController"))
+local LoadingController = require(Controllers:WaitForChild("LoadingController"))
+local TutorialController = require(Controllers:WaitForChild("TutorialController"))
+local DailyRewardController = require(Controllers:WaitForChild("DailyRewardController"))
+local LegendaryMarqueeController = require(Controllers:WaitForChild("LegendaryMarqueeController"))
+local OfflineEarningsController = require(Controllers:WaitForChild("OfflineEarningsController"))
 
 local State = {
 	catalog = nil :: any,
@@ -31,14 +36,6 @@ local State = {
 
 local r = Remotes.Client()
 
-State.catalog = r.Functions.GetCatalog:InvokeServer()
-State.snapshot = r.Functions.GetPlayerSnapshot:InvokeServer()
-
-r.Events.PlayerDataReplicated.OnClientEvent:Connect(function(snapshot)
-	State.snapshot = snapshot
-	State.SnapshotChanged:Fire(snapshot)
-end)
-
 -- Build the persistent ScreenGui everyone hangs UI off.
 local screen = Instance.new("ScreenGui")
 screen.Name = "ReefTycoonGui"
@@ -47,10 +44,28 @@ screen.ResetOnSpawn = false
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.Parent = PlayerGui
 
+-- Loading screen first so it's visible while we await the catalog.
+LoadingController.Mount(screen, State)
+
+State.catalog = r.Functions.GetCatalog:InvokeServer()
+State.snapshot = r.Functions.GetPlayerSnapshot:InvokeServer()
+if State.snapshot then
+	State.SnapshotChanged:Fire(State.snapshot)
+end
+
+r.Events.PlayerDataReplicated.OnClientEvent:Connect(function(snapshot)
+	State.snapshot = snapshot
+	State.SnapshotChanged:Fire(snapshot)
+end)
+
 HudController.Mount(screen, State)
 ShopController.Mount(screen, State)
 InventoryController.Mount(screen, State)
 GachaController.Mount(screen, State, r)
+DailyRewardController.Mount(screen, State)
+LegendaryMarqueeController.Mount(screen, State)
+OfflineEarningsController.Mount(screen, State)
+TutorialController.Mount(screen, State)
 
 -- Forward Mythic+ pull events to the GachaController for the cinematic.
 r.Events.GachaPullResult.OnClientEvent:Connect(function(result)

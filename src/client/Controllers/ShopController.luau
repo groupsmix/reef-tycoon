@@ -114,6 +114,63 @@ function ShopController.Mount(screen: ScreenGui, State)
 	local layoutGems = Instance.new("UIListLayout")
 	layoutGems.Padding = UDim.new(0, 6)
 	layoutGems.Parent = gemsTab
+
+	-- Pity progress strip on the Gems tab.
+	local pityFrame = Instance.new("Frame")
+	pityFrame.Size = UDim2.new(1, -16, 0, 56)
+	pityFrame.BackgroundColor3 = Color3.fromRGB(35, 50, 70)
+	pityFrame.BorderSizePixel = 0
+	pityFrame.LayoutOrder = -1000
+	pityFrame.Parent = gemsTab
+	local pityCorner = Instance.new("UICorner")
+	pityCorner.CornerRadius = UDim.new(0, 8)
+	pityCorner.Parent = pityFrame
+
+	local pityTitle = Instance.new("TextLabel")
+	pityTitle.BackgroundTransparency = 1
+	pityTitle.Size = UDim2.new(1, -16, 0, 18)
+	pityTitle.Position = UDim2.new(0, 8, 0, 4)
+	pityTitle.Font = Enum.Font.GothamBlack
+	pityTitle.TextSize = 12
+	pityTitle.TextXAlignment = Enum.TextXAlignment.Left
+	pityTitle.TextColor3 = Color3.fromRGB(255, 220, 120)
+	pityTitle.Text = "PITY PROGRESS"
+	pityTitle.Parent = pityFrame
+
+	local pityEpicLbl = Instance.new("TextLabel")
+	pityEpicLbl.BackgroundTransparency = 1
+	pityEpicLbl.Size = UDim2.new(1, -16, 0, 14)
+	pityEpicLbl.Position = UDim2.new(0, 8, 0, 22)
+	pityEpicLbl.Font = Enum.Font.GothamMedium
+	pityEpicLbl.TextSize = 12
+	pityEpicLbl.TextXAlignment = Enum.TextXAlignment.Left
+	pityEpicLbl.TextColor3 = Color3.fromRGB(220, 220, 220)
+	pityEpicLbl.Text = "Epic+ in --"
+	pityEpicLbl.Parent = pityFrame
+
+	local pityMythicLbl = Instance.new("TextLabel")
+	pityMythicLbl.BackgroundTransparency = 1
+	pityMythicLbl.Size = UDim2.new(1, -16, 0, 14)
+	pityMythicLbl.Position = UDim2.new(0, 8, 0, 38)
+	pityMythicLbl.Font = Enum.Font.GothamMedium
+	pityMythicLbl.TextSize = 12
+	pityMythicLbl.TextXAlignment = Enum.TextXAlignment.Left
+	pityMythicLbl.TextColor3 = Color3.fromRGB(220, 220, 220)
+	pityMythicLbl.Text = "Mythic in --"
+	pityMythicLbl.Parent = pityFrame
+
+	local function refreshPity()
+		local snap = State.snapshot
+		if not snap or not snap.gacha then
+			return
+		end
+		local epicLeft = math.max(0, State.catalog.config.pityEpicAt - snap.gacha.rollsSinceEpicPlus)
+		local mythicLeft = math.max(0, State.catalog.config.pityMythicAt - snap.gacha.rollsSinceMythic)
+		pityEpicLbl.Text = ("Epic+ guaranteed in %d rolls"):format(epicLeft)
+		pityMythicLbl.Text = ("Mythic guaranteed in %d rolls"):format(mythicLeft)
+	end
+	State.SnapshotChanged:Connect(refreshPity)
+	refreshPity()
 	local layoutPasses = Instance.new("UIListLayout")
 	layoutPasses.Padding = UDim.new(0, 6)
 	layoutPasses.Parent = passesTab

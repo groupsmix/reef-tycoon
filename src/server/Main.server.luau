@@ -4,14 +4,17 @@
 
 	1. Init services in dependency order (so each service's Init() runs
 	   before any Start() runs).
-	2. Wire up the GetPlayerSnapshot / GetCatalog read endpoints used by
-	   the client to mirror state.
+	2. Wire the GetPlayerSnapshot / GetCatalog read endpoints used by the
+	   client to mirror state.
 	3. Replicate profile diffs to the owning client on every change.
+	4. Grant offline earnings + fire OfflineEarnings event on join so the
+	   client can show the welcome-back panel.
 ]]
 
 local Players = game:GetService("Players")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local FishData = require(Shared:WaitForChild("FishData"))
 local TankData = require(Shared:WaitForChild("TankData"))
@@ -20,16 +23,26 @@ local GamepassData = require(Shared:WaitForChild("GamepassData"))
 local DevProductData = require(Shared:WaitForChild("DevProductData"))
 
 local Services = script.Parent:WaitForChild("Services")
+
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
+local WorldService = require(Services:WaitForChild("WorldService"))
 local TankService = require(Services:WaitForChild("TankService"))
+local TankRenderService = require(Services:WaitForChild("TankRenderService"))
+local PlacementService = require(Services:WaitForChild("PlacementService"))
 local VisitorService = require(Services:WaitForChild("VisitorService"))
+local VisitorRenderService = require(Services:WaitForChild("VisitorRenderService"))
 local GachaService = require(Services:WaitForChild("GachaService"))
 local MonetizationService = require(Services:WaitForChild("MonetizationService"))
 local PrestigeService = require(Services:WaitForChild("PrestigeService"))
+local BadgeService = require(Services:WaitForChild("BadgeService"))
+local AnalyticsService = require(Services:WaitForChild("AnalyticsService"))
+local AntiCheatService = require(Services:WaitForChild("AntiCheatService"))
+local DailyRewardService = require(Services:WaitForChild("DailyRewardService"))
+local LeaderboardService = require(Services:WaitForChild("LeaderboardService"))
+local SoundService = require(Services:WaitForChild("SoundService"))
 
 local function buildCatalog()
-	-- Strip mesh ids = 0 isn't an issue; we send full data.
 	local rarities = {}
 	for id, r in RarityData.Rarities do
 		rarities[id] = {
@@ -102,6 +115,14 @@ local function buildCatalog()
 		rarityOrder = RarityData.Order,
 		gamepassOrder = GamepassData.Order,
 		devProductOrder = DevProductData.Order,
+		config = {
+			eggCostGems = Config.EGG_COST_GEMS,
+			mythicEggCostGems = Config.MYTHIC_EGG_COST_GEMS,
+			pityEpicAt = Config.PITY_EPIC_PLUS_AT,
+			pityMythicAt = Config.PITY_MYTHIC_AT,
+			prestigeUnlock = Config.PRESTIGE_UNLOCK_LIFETIME_CASH,
+			prestigeBonus = Config.PRESTIGE_BONUS_PER_LEVEL,
+		},
 	}
 end
 
@@ -123,6 +144,8 @@ local function snapshot(player: Player)
 		inventory = profile.inventory,
 		placedTanks = profile.placedTanks,
 		gacha = profile.gacha,
+		tutorialDone = profile.tutorialDone,
+		dailyStreak = profile.dailyStreak,
 	}
 end
 
@@ -136,11 +159,21 @@ end
 -- ────────── Init phase ──────────
 DataService.Init()
 EconomyService.Init()
+WorldService.Init()
+SoundService.Init()
 TankService.Init()
+TankRenderService.Init()
+PlacementService.Init()
 VisitorService.Init()
+VisitorRenderService.Init()
 GachaService.Init()
 MonetizationService.Init()
 PrestigeService.Init()
+BadgeService.Init()
+AnalyticsService.Init()
+AntiCheatService.Init()
+DailyRewardService.Init()
+LeaderboardService.Init()
 
 -- Wire read endpoints
 Remotes.Server().Functions.GetCatalog.OnServerInvoke = function(_player)
@@ -148,6 +181,19 @@ Remotes.Server().Functions.GetCatalog.OnServerInvoke = function(_player)
 end
 Remotes.Server().Functions.GetPlayerSnapshot.OnServerInvoke = function(player)
 	return snapshot(player)
+end
+Remotes.Server().Functions.GetTopCash.OnServerInvoke = function(_player)
+	return LeaderboardService.GetTopCash()
+end
+Remotes.Server().Functions.MarkTutorialDone.OnServerInvoke = function(player)
+	local profile = DataService.GetProfile(player)
+	if not profile then
+		return false
+	end
+	profile.tutorialDone = true
+	DataService.MarkChanged(player)
+	AnalyticsService.Track(player, "tutorial_done", nil)
+	return true
 end
 
 -- Replicate diffs to the owning client.
@@ -158,24 +204,41 @@ end)
 -- Grant offline earnings + first snapshot when the player joins.
 Players.PlayerAdded:Connect(function(player)
 	DataService.WaitForProfile(player, 10)
-	VisitorService.GrantOfflineEarnings(player)
+	local granted = VisitorService.GrantOfflineEarnings(player)
 	pushSnapshot(player)
+	if granted > 0 then
+		Remotes.Server().Events.OfflineEarnings:FireClient(player, granted)
+	end
+	AnalyticsService.Track(player, "session_start", { offlineEarnings = granted })
 end)
 for _, p in Players:GetPlayers() do
 	task.spawn(function()
 		DataService.WaitForProfile(p, 10)
-		VisitorService.GrantOfflineEarnings(p)
+		local granted = VisitorService.GrantOfflineEarnings(p)
 		pushSnapshot(p)
+		if granted > 0 then
+			Remotes.Server().Events.OfflineEarnings:FireClient(p, granted)
+		end
 	end)
 end
 
 -- ────────── Start phase ──────────
 DataService.Start()
 EconomyService.Start()
+WorldService.Start()
+SoundService.Start()
 TankService.Start()
+TankRenderService.Start()
+PlacementService.Start()
 VisitorService.Start()
+VisitorRenderService.Start()
 GachaService.Start()
 MonetizationService.Start()
 PrestigeService.Start()
+BadgeService.Start()
+AnalyticsService.Start()
+AntiCheatService.Start()
+DailyRewardService.Start()
+LeaderboardService.Start()
 
-print(("[ReefTycoon] server ready (v%s)"):format(require(Shared:WaitForChild("Config")).GAME_VERSION))
+print(("[ReefTycoon] server ready (v%s)"):format(Config.GAME_VERSION))

@@ -9,7 +9,7 @@
 local Config = {}
 
 Config.GAME_NAME = "Reef Tycoon"
-Config.GAME_VERSION = "0.1.0"
+Config.GAME_VERSION = "0.2.0"
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- DataStore
@@ -21,15 +21,17 @@ Config.DATASTORE_AUDIT_KEY = "ReefTycoon_Audit_v1"
 Config.SAVE_INTERVAL_SECONDS = 60
 Config.SNAPSHOT_INTERVAL_SECONDS = 3600
 Config.SHUTDOWN_SAVE_TIMEOUT_SECONDS = 25
+Config.SCHEMA_VERSION = 2
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Economy
 -- ────────────────────────────────────────────────────────────────────────────
 
 Config.STARTING_CASH = 100
-Config.STARTING_GEMS = 0
+Config.STARTING_GEMS = 50 -- one free pull on the first session
 Config.STARTING_TANK_SLOTS = 4
 Config.MAX_OFFLINE_HOURS = 12
+Config.OFFLINE_RATE_FACTOR = 0.5
 
 -- Tip rate per fish per second = base * rarityMultiplier * tankMultiplier
 Config.BASE_TIP_PER_SECOND = 0.5
@@ -89,6 +91,33 @@ Config.DEV_PRODUCT_IDS = {
 	GEMS_75K = 0, -- 4999 R$
 	MYTHIC_EGG = 0, -- 1499 R$
 	EVENT_PASS = 0, -- 799 R$
+}
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Badges (create in Creator Hub, then paste the IDs here)
+-- ────────────────────────────────────────────────────────────────────────────
+
+Config.BADGE_IDS = {
+	WELCOME = 0,
+	FIRST_MYTHIC = 0,
+	FIRST_LEGENDARY = 0,
+	FIRST_PRESTIGE = 0,
+	PRESTIGE_10 = 0,
+}
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Sounds (create / upload in Creator Hub, then paste the asset IDs)
+-- Free options on the Toolbox / Asset Library are fine.
+-- ────────────────────────────────────────────────────────────────────────────
+
+Config.SOUND_IDS = {
+	AMBIENT_OCEAN = 0,
+	BUBBLES = 0,
+	MUSIC_CHILL = 0,
+	TIP = 0,
+	EGG_POP = 0,
+	MYTHIC_STINGER = 0,
+	LEGENDARY_STINGER = 0,
 }
 
 return Config

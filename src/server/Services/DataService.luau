@@ -3,9 +3,12 @@
 	DataService — owns the player profile lifecycle.
 
 	- Loads the profile from a primary DataStore key on join.
+	- Falls back to the snapshot key on primary failure.
 	- Periodic auto-save + hourly snapshot to a separate key.
 	- BindToClose flushes within Config.SHUTDOWN_SAVE_TIMEOUT_SECONDS.
-	- Exposes a single mutable Profile per player + a ProfileChanged signal.
+	- Schema migrations: each integer schema version maps to a function
+	  that mutates an old profile in-place. New versions are added by
+	  appending to MIGRATIONS without changing existing entries.
 
 	Profiles are intentionally JSON-shaped (no instances, no functions) so
 	they round-trip through DataStores and can be re-shaped by future
@@ -47,13 +50,16 @@ export type Profile = {
 		totalRolls: number,
 		rollsSinceEpicPlus: number,
 		rollsSinceMythic: number,
+		legendaryCount: number,
+		mythicCount: number,
 	},
+	tutorialDone: boolean,
+	dailyStreak: number,
+	lastDailyClaimAt: number,
 	lastSeenAt: number, -- unix seconds, used for offline earnings
 	totalPlaytimeSec: number,
 	createdAt: number,
 }
-
-local CURRENT_SCHEMA = 1
 
 local DataService = {}
 DataService.ProfileChanged = Signal.new()
@@ -67,7 +73,7 @@ local saving: { [number]: boolean } = {}
 
 local function newProfile(): Profile
 	return {
-		schemaVersion = CURRENT_SCHEMA,
+		schemaVersion = Config.SCHEMA_VERSION,
 		cash = Config.STARTING_CASH,
 		gems = Config.STARTING_GEMS,
 		lifetimeCash = 0,
@@ -81,25 +87,53 @@ local function newProfile(): Profile
 			totalRolls = 0,
 			rollsSinceEpicPlus = 0,
 			rollsSinceMythic = 0,
+			legendaryCount = 0,
+			mythicCount = 0,
 		},
+		tutorialDone = false,
+		dailyStreak = 0,
+		lastDailyClaimAt = 0,
 		lastSeenAt = os.time(),
 		totalPlaytimeSec = 0,
 		createdAt = os.time(),
 	}
 end
 
-local function migrate(profile: Profile): Profile
-	-- Future migrations live here, keyed off `profile.schemaVersion`.
-	if profile.schemaVersion ~= CURRENT_SCHEMA then
-		profile.schemaVersion = CURRENT_SCHEMA
+-- Migrations are pure mutations from version N → N+1. They MUST be
+-- idempotent — running them twice on the same profile must be safe.
+local MIGRATIONS = {
+	-- v1 → v2: add tutorialDone, dailyStreak, lastDailyClaimAt, gacha counters
+	[2] = function(p: any)
+		p.tutorialDone = p.tutorialDone or false
+		p.dailyStreak = p.dailyStreak or 0
+		p.lastDailyClaimAt = p.lastDailyClaimAt or 0
+		p.gacha = p.gacha or { totalRolls = 0, rollsSinceEpicPlus = 0, rollsSinceMythic = 0 }
+		p.gacha.legendaryCount = p.gacha.legendaryCount or 0
+		p.gacha.mythicCount = p.gacha.mythicCount or 0
+	end,
+}
+
+local function migrate(profile: any): Profile
+	local from = profile.schemaVersion or 1
+	for v = from + 1, Config.SCHEMA_VERSION do
+		local fn = MIGRATIONS[v]
+		if fn then
+			fn(profile)
+		end
+		profile.schemaVersion = v
 	end
-	-- Defensive defaults in case a key was added since the save.
+	-- Defensive defaults in case something hand-edited a save.
 	profile.prestigeMultiplier = 1 + (profile.prestigeLevel or 0) * Config.PRESTIGE_BONUS_PER_LEVEL
 	profile.gamepasses = profile.gamepasses or {}
 	profile.inventory = profile.inventory or {}
 	profile.placedTanks = profile.placedTanks or {}
 	profile.gacha = profile.gacha or { totalRolls = 0, rollsSinceEpicPlus = 0, rollsSinceMythic = 0 }
-	return profile
+	profile.gacha.legendaryCount = profile.gacha.legendaryCount or 0
+	profile.gacha.mythicCount = profile.gacha.mythicCount or 0
+	profile.tutorialDone = profile.tutorialDone or false
+	profile.dailyStreak = profile.dailyStreak or 0
+	profile.lastDailyClaimAt = profile.lastDailyClaimAt or 0
+	return profile :: Profile
 end
 
 local function key(userId: number): string
@@ -108,12 +142,11 @@ end
 
 local function load(userId: number): Profile
 	if RunService:IsStudio() then
-		-- In Studio with no DataStore access, we still get a fresh profile.
 		local ok, result = pcall(function()
 			return primaryStore:GetAsync(key(userId))
 		end)
 		if ok and result then
-			return migrate(result :: Profile)
+			return migrate(result)
 		end
 		return newProfile()
 	end
@@ -122,17 +155,16 @@ local function load(userId: number): Profile
 		return primaryStore:GetAsync(key(userId))
 	end)
 	if ok and result then
-		return migrate(result :: Profile)
+		return migrate(result)
 	end
 	if not ok then
 		warn(("[DataService] primary load failed for %d: %s"):format(userId, tostring(result)))
-		-- Try snapshot as a fallback.
 		local snapOk, snapResult = pcall(function()
 			return snapshotStore:GetAsync(key(userId))
 		end)
 		if snapOk and snapResult then
 			warn(("[DataService] recovered %d from snapshot"):format(userId))
-			return migrate(snapResult :: Profile)
+			return migrate(snapResult)
 		end
 	end
 	return newProfile()
@@ -234,7 +266,6 @@ function DataService.Start()
 			profile.lastSeenAt = os.time()
 			task.spawn(save, userId, profile)
 		end
-		-- Give save tasks time to flush.
 		while os.clock() < deadline do
 			task.wait(0.1)
 		end

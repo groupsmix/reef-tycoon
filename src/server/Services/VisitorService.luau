@@ -109,8 +109,8 @@ local function calcOfflineEarnings(profile): number
 	end
 	total *= profile.prestigeMultiplier
 	total *= gamepassMultiplier(profile)
-	-- Offline earns at half rate so live play still feels best.
-	return math.floor(total * 0.5)
+	-- Offline earns at a reduced rate so live play still feels best.
+	return math.floor(total * Config.OFFLINE_RATE_FACTOR)
 end
 
 function VisitorService.GrantOfflineEarnings(player: Player)

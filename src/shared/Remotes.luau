@@ -19,6 +19,8 @@ local EVENT_NAMES = {
 	"LegendaryAnnounce",
 	"PromptDevProductPurchase",
 	"PromptGamepassPurchase",
+	"OfflineEarnings",
+	"TutorialStep",
 }
 
 local FUNCTION_NAMES = {
@@ -31,6 +33,10 @@ local FUNCTION_NAMES = {
 	"Prestige",
 	"GetPlayerSnapshot",
 	"GetCatalog",
+	"GetDailyStatus",
+	"ClaimDaily",
+	"GetTopCash",
+	"MarkTutorialDone",
 }
 
 local Remotes = {}

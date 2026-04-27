@@ -142,6 +142,10 @@ function GachaService.RollEgg(
 	end
 	if RARITY_INDEX[rolledRarity] >= RARITY_INDEX.Mythic then
 		profile.gacha.rollsSinceMythic = 0
+		profile.gacha.mythicCount = (profile.gacha.mythicCount or 0) + 1
+	end
+	if rolledRarity == "Legendary" then
+		profile.gacha.legendaryCount = (profile.gacha.legendaryCount or 0) + 1
 	end
 
 	local fishId = pickFishOfRarity(rolledRarity)

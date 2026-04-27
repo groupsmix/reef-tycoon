@@ -26,6 +26,7 @@ local DevProductData = require(Shared:WaitForChild("DevProductData"))
 local Services = script.Parent:WaitForChild("Services")
 
 local DataService = require(Services:WaitForChild("DataService"))
+local LiveConfigService = require(Services:WaitForChild("LiveConfigService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local WorldService = require(Services:WaitForChild("WorldService"))
 local TankService = require(Services:WaitForChild("TankService"))
@@ -127,7 +128,10 @@ local function buildCatalog()
 	}
 end
 
-local catalog = buildCatalog()
+-- Catalog is built AFTER LiveConfigService.Init() so live overrides
+-- (event fish, rarity weight tweaks) flow into the client snapshot.
+-- See the Init phase below for ordering.
+local catalog: any
 
 local function snapshot(player: Player)
 	local profile = DataService.WaitForProfile(player, 5)
@@ -198,6 +202,11 @@ end)
 
 -- ────────── Init phase ──────────
 DataService.Init()
+-- LiveConfig MUST run before the catalog is built so overrides flow
+-- to clients. Until this returns, FishData / RarityData hold static
+-- defaults; after, they hold the merged live config.
+LiveConfigService.Init()
+catalog = buildCatalog()
 EconomyService.Init()
 WorldService.Init()
 SoundService.Init()

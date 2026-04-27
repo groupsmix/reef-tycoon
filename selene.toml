@@ -1,0 +1,7 @@
+std = "roblox"
+
+[rules]
+shadowing = "allow"
+mixed_table = "allow"
+global_usage = "allow"
+empty_if = "warn"

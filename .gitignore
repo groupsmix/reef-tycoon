@@ -1,0 +1,16 @@
+# Rojo build artifacts
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rbxmx
+build/
+
+# Editor
+.vscode/settings.json
+.DS_Store
+
+# Tooling
+.lune/
+
+# Roblox-installed plugins / sourcemaps
+sourcemap.json

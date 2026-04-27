@@ -22,4 +22,6 @@ jobs:
         run: stylua --check src
 
       - name: Rojo build (sanity)
-        run: rojo build default.project.json -o build/ReefTycoon.rbxlx
+        run: |
+          mkdir -p build
+          rojo build default.project.json -o build/ReefTycoon.rbxlx

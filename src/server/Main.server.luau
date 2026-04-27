@@ -149,12 +149,51 @@ local function snapshot(player: Player)
 	}
 end
 
-local function pushSnapshot(player: Player)
+local function pushSnapshotImmediate(player: Player)
 	local s = snapshot(player)
 	if s then
 		Remotes.Server().Events.PlayerDataReplicated:FireClient(player, s)
 	end
 end
+
+-- Debounce snapshot replication to ~3 Hz (333ms). Without this, every
+-- visitor tip call (potentially many per second per player) would fire
+-- a full PlayerDataReplicated which is the heaviest payload on the
+-- wire. Coalescing trailing-edge keeps the perceived latency under
+-- 350ms while cutting bandwidth by an order of magnitude in the
+-- 12-player full-server case.
+local SNAPSHOT_DEBOUNCE_SEC = 0.333
+local pendingSnapshot: { [number]: boolean } = {}
+local lastSnapshotAt: { [number]: number } = {}
+
+local function pushSnapshot(player: Player)
+	local userId = player.UserId
+	local now = os.clock()
+	local last = lastSnapshotAt[userId] or 0
+	if now - last >= SNAPSHOT_DEBOUNCE_SEC then
+		lastSnapshotAt[userId] = now
+		pushSnapshotImmediate(player)
+		return
+	end
+	if pendingSnapshot[userId] then
+		return
+	end
+	pendingSnapshot[userId] = true
+	local wait = SNAPSHOT_DEBOUNCE_SEC - (now - last)
+	task.delay(wait, function()
+		pendingSnapshot[userId] = nil
+		if not player.Parent then
+			return
+		end
+		lastSnapshotAt[userId] = os.clock()
+		pushSnapshotImmediate(player)
+	end)
+end
+
+Players.PlayerRemoving:Connect(function(player)
+	pendingSnapshot[player.UserId] = nil
+	lastSnapshotAt[player.UserId] = nil
+end)
 
 -- ────────── Init phase ──────────
 DataService.Init()

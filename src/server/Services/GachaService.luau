@@ -20,9 +20,11 @@ local RarityData = require(Shared:WaitForChild("RarityData"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local RateLimiter = require(Shared:WaitForChild("Util"):WaitForChild("RateLimiter"))
 local WeightedRandom = require(Shared:WaitForChild("Util"):WaitForChild("WeightedRandom"))
+local Validate = require(Shared:WaitForChild("Util"):WaitForChild("Validate"))
 
 local DataService = require(script.Parent:WaitForChild("DataService"))
 local EconomyService = require(script.Parent:WaitForChild("EconomyService"))
+local AntiCheatService = require(script.Parent:WaitForChild("AntiCheatService"))
 
 local GachaService = {}
 
@@ -190,10 +192,11 @@ end
 
 function GachaService.Init()
 	local r = Remotes.Server()
-	r.Functions.BuyEgg.OnServerInvoke = function(player)
+	local banned = AntiCheatService.IsBanned
+	r.Functions.BuyEgg.OnServerInvoke = Validate.zeroArgs(function(player)
 		return GachaService.RollEgg(player)
-	end
-	r.Functions.BuyMythicEgg.OnServerInvoke = function(player)
+	end, banned)
+	r.Functions.BuyMythicEgg.OnServerInvoke = Validate.zeroArgs(function(player)
 		local profile = DataService.GetProfile(player)
 		if not profile then
 			return nil
@@ -202,7 +205,7 @@ function GachaService.Init()
 			return nil
 		end
 		return GachaService.RollEgg(player, { force = "Mythic", free = true })
-	end
+	end, banned)
 end
 
 function GachaService.Start() end

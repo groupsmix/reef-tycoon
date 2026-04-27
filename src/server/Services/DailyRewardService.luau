@@ -18,9 +18,11 @@
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Validate = require(Shared:WaitForChild("Util"):WaitForChild("Validate"))
 
 local DataService = require(script.Parent:WaitForChild("DataService"))
 local EconomyService = require(script.Parent:WaitForChild("EconomyService"))
+local AntiCheatService = require(script.Parent:WaitForChild("AntiCheatService"))
 
 local DailyRewardService = {}
 
@@ -94,12 +96,13 @@ end
 
 function DailyRewardService.Init()
 	local r = Remotes.Server()
-	r.Functions.GetDailyStatus.OnServerInvoke = function(player)
+	local banned = AntiCheatService.IsBanned
+	r.Functions.GetDailyStatus.OnServerInvoke = Validate.zeroArgs(function(player)
 		return DailyRewardService.GetStatus(player)
-	end
-	r.Functions.ClaimDaily.OnServerInvoke = function(player)
+	end, banned)
+	r.Functions.ClaimDaily.OnServerInvoke = Validate.zeroArgs(function(player)
 		return DailyRewardService.Claim(player)
-	end
+	end, banned)
 end
 
 function DailyRewardService.Start() end

@@ -11,6 +11,8 @@ local Config = require(Shared:WaitForChild("Config"))
 local TankData = require(Shared:WaitForChild("TankData"))
 local FishData = require(Shared:WaitForChild("FishData"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Validate = require(Shared:WaitForChild("Util"):WaitForChild("Validate"))
+local AntiCheatService = require(script.Parent:WaitForChild("AntiCheatService"))
 
 local DataService = require(script.Parent:WaitForChild("DataService"))
 local EconomyService = require(script.Parent:WaitForChild("EconomyService"))
@@ -151,34 +153,31 @@ end
 
 function TankService.Init()
 	local r = Remotes.Server()
+	local banned = AntiCheatService.IsBanned
 
-	r.Functions.PlaceTank.OnServerInvoke = function(player, tankId, pedestalIndex)
-		if typeof(tankId) ~= "string" or typeof(pedestalIndex) ~= "number" then
-			return false
-		end
+	r.Functions.PlaceTank.OnServerInvoke = Validate.wrap({ "string", "number" }, function(player, tankId, pedestalIndex)
 		return TankService.Place(player, tankId, pedestalIndex)
-	end
+	end, banned)
 
-	r.Functions.RemoveTank.OnServerInvoke = function(player, pedestalIndex)
-		if typeof(pedestalIndex) ~= "number" then
-			return false
-		end
+	r.Functions.RemoveTank.OnServerInvoke = Validate.wrap({ "number" }, function(player, pedestalIndex)
 		return TankService.Remove(player, pedestalIndex)
-	end
+	end, banned)
 
-	r.Functions.AssignFishToTank.OnServerInvoke = function(player, pedestalIndex, fishId)
-		if typeof(pedestalIndex) ~= "number" or typeof(fishId) ~= "string" then
-			return false
-		end
-		return TankService.AssignFish(player, pedestalIndex, fishId)
-	end
+	r.Functions.AssignFishToTank.OnServerInvoke = Validate.wrap(
+		{ "number", "string" },
+		function(player, pedestalIndex, fishId)
+			return TankService.AssignFish(player, pedestalIndex, fishId)
+		end,
+		banned
+	)
 
-	r.Functions.UnassignFishFromTank.OnServerInvoke = function(player, pedestalIndex, slotIndex)
-		if typeof(pedestalIndex) ~= "number" or typeof(slotIndex) ~= "number" then
-			return false
-		end
-		return TankService.UnassignFish(player, pedestalIndex, slotIndex)
-	end
+	r.Functions.UnassignFishFromTank.OnServerInvoke = Validate.wrap(
+		{ "number", "number" },
+		function(player, pedestalIndex, slotIndex)
+			return TankService.UnassignFish(player, pedestalIndex, slotIndex)
+		end,
+		banned
+	)
 
 	-- Reference Config so it doesn't drift unused
 	local _ = Config.MAX_TANK_SLOTS

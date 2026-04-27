@@ -13,8 +13,10 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local FishData = require(Shared:WaitForChild("FishData"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Validate = require(Shared:WaitForChild("Util"):WaitForChild("Validate"))
 
 local DataService = require(script.Parent:WaitForChild("DataService"))
+local AntiCheatService = require(script.Parent:WaitForChild("AntiCheatService"))
 
 local PrestigeService = {}
 
@@ -81,9 +83,9 @@ end
 
 function PrestigeService.Init()
 	local r = Remotes.Server()
-	r.Functions.Prestige.OnServerInvoke = function(player)
+	r.Functions.Prestige.OnServerInvoke = Validate.zeroArgs(function(player)
 		return PrestigeService.Prestige(player)
-	end
+	end, AntiCheatService.IsBanned)
 end
 
 function PrestigeService.Start() end

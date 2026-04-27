@@ -16,6 +16,7 @@ local Players = game:GetService("Players")
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Validate = require(Shared:WaitForChild("Util"):WaitForChild("Validate"))
 local FishData = require(Shared:WaitForChild("FishData"))
 local TankData = require(Shared:WaitForChild("TankData"))
 local RarityData = require(Shared:WaitForChild("RarityData"))
@@ -224,7 +225,7 @@ end
 Remotes.Server().Functions.GetTopCash.OnServerInvoke = function(_player)
 	return LeaderboardService.GetTopCash()
 end
-Remotes.Server().Functions.MarkTutorialDone.OnServerInvoke = function(player)
+Remotes.Server().Functions.MarkTutorialDone.OnServerInvoke = Validate.zeroArgs(function(player)
 	local profile = DataService.GetProfile(player)
 	if not profile then
 		return false
@@ -233,7 +234,7 @@ Remotes.Server().Functions.MarkTutorialDone.OnServerInvoke = function(player)
 	DataService.MarkChanged(player)
 	AnalyticsService.Track(player, "tutorial_done", nil)
 	return true
-end
+end, AntiCheatService.IsBanned)
 
 -- Replicate diffs to the owning client.
 DataService.ProfileChanged:Connect(function(player, _profile)

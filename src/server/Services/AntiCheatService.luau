@@ -37,8 +37,32 @@ local KICK_THRESHOLD = THEORETICAL_MAX_PER_SEC * HEADROOM
 
 local windowSize = 5
 local cashHistory: { [number]: { cash: number, t: number } } = {}
+local bannedSet: { [number]: boolean } = {}
 
 local store = DataStoreService:GetDataStore(Config.DATASTORE_AUDIT_KEY)
+local banStore = DataStoreService:GetDataStore("ReefTycoon_Bans_v1")
+
+function AntiCheatService.IsBanned(userId: number): boolean
+	return bannedSet[userId] == true
+end
+
+local function loadBan(userId: number)
+	if RunService:IsStudio() then
+		return
+	end
+	task.spawn(function()
+		local ok, value = pcall(function()
+			return banStore:GetAsync("ban_" .. userId)
+		end)
+		if ok and value then
+			bannedSet[userId] = true
+			local player = Players:GetPlayerByUserId(userId)
+			if player then
+				player:Kick("Account suspended.")
+			end
+		end
+	end)
+end
 
 local function recordAndCheck(player: Player)
 	local profile = DataService.GetProfile(player)
@@ -92,8 +116,15 @@ function AntiCheatService.Init()
 	EconomyService.CashChanged:Connect(function(player: Player, _new, _delta, _reason)
 		recordAndCheck(player)
 	end)
+	Players.PlayerAdded:Connect(function(player)
+		loadBan(player.UserId)
+	end)
+	for _, p in Players:GetPlayers() do
+		loadBan(p.UserId)
+	end
 	Players.PlayerRemoving:Connect(function(player)
 		cashHistory[player.UserId] = nil
+		bannedSet[player.UserId] = nil
 	end)
 
 	-- Periodic sweep for slow-cooked exploits that don't trip per-event.

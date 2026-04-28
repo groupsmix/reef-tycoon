@@ -70,6 +70,15 @@ local function processReceipt(receiptInfo)
 	if not profile then
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
+
+	-- Idempotency: if Roblox replays a receipt we've already granted (e.g.
+	-- the previous server crashed mid-grant), short-circuit. processedReceipts
+	-- is persisted to the profile, so this survives across server hops.
+	local receiptId = tostring(receiptInfo.PurchaseId)
+	if profile.processedReceipts[receiptId] then
+		return Enum.ProductPurchaseDecision.PurchaseGranted
+	end
+
 	local effectId = findDevProductByProductId(receiptInfo.ProductId)
 	if not effectId then
 		warn(("[Monetization] unknown ProductId %s"):format(tostring(receiptInfo.ProductId)))
@@ -77,6 +86,8 @@ local function processReceipt(receiptInfo)
 	end
 	local ok = applyDevProductEffect(player, effectId)
 	if ok then
+		profile.processedReceipts[receiptId] = os.time()
+		DataService.MarkChanged(player)
 		return Enum.ProductPurchaseDecision.PurchaseGranted
 	end
 	return Enum.ProductPurchaseDecision.NotProcessedYet
@@ -104,6 +115,11 @@ local function refreshGamepasses(player: Player)
 		profile.tankSlots = math.max(profile.tankSlots, Config.STARTING_TANK_SLOTS + 10)
 	end
 	DataService.MarkChanged(player)
+end
+
+-- Test-only seam.
+function MonetizationService._processReceipt(receiptInfo)
+	return processReceipt(receiptInfo)
 end
 
 function MonetizationService.Init()

@@ -46,6 +46,16 @@ function AntiCheatService.IsBanned(userId: number): boolean
 	return bannedSet[userId] == true
 end
 
+-- Test-only seam: returns true if the given cash-per-second rate would
+-- trigger a kick. Pure function over the configured threshold.
+function AntiCheatService._exceedsThreshold(rate: number): boolean
+	return rate > KICK_THRESHOLD
+end
+
+function AntiCheatService._kickThreshold(): number
+	return KICK_THRESHOLD
+end
+
 local function loadBan(userId: number)
 	if RunService:IsStudio() then
 		return

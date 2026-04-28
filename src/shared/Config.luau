@@ -21,7 +21,7 @@ Config.DATASTORE_AUDIT_KEY = "ReefTycoon_Audit_v1"
 Config.SAVE_INTERVAL_SECONDS = 60
 Config.SNAPSHOT_INTERVAL_SECONDS = 3600
 Config.SHUTDOWN_SAVE_TIMEOUT_SECONDS = 25
-Config.SCHEMA_VERSION = 2
+Config.SCHEMA_VERSION = 3
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- Economy

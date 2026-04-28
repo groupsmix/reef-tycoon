@@ -2,7 +2,7 @@
 
 Idle / incremental aquarium tycoon for Roblox. Built solo with AI-assisted tooling. See [`design.md`](./design.md) for the full game design doc.
 
-> **Status (v0.2.0):** Production-ready scaffold. Server auto-builds the lobby (12 plots, pedestals, water, lighting), tanks render programmatically with animated fish, NPC visitors walk between tanks tipping cash, gacha cinematic with particles + camera shake + sound stingers, daily login reward, tutorial onboarding, server-wide Legendary marquee, anti-cheat (cash-velocity detection + audit log), schema-versioned saves with snapshot fallback, structured analytics, leaderstats + OrderedDataStore top-10, badges + sound system gracefully no-op when their asset IDs are 0.
+> **Status (v0.2.0):** Feature-complete pre-launch scaffold. Server auto-builds the lobby (12 plots, pedestals, water, lighting), tanks render programmatically with animated fish, NPC visitors walk between tanks tipping cash, gacha cinematic with particles + camera shake + sound stingers, daily login reward, tutorial onboarding, server-wide Legendary marquee, anti-cheat (cash-velocity detection + audit log), schema-versioned saves with snapshot fallback, structured analytics, leaderstats + OrderedDataStore top-10, badges + sound system gracefully no-op when their asset IDs are 0.
 
 ## Quickstart
 
@@ -88,12 +88,32 @@ src/
 ## Lint + build locally
 
 ```bash
-selene src
-stylua --check src
+selene src tests
+stylua --check src tests
 rojo build default.project.json -o build/ReefTycoon.rbxlx
+rojo build tests.project.json -o build/ReefTycoonTests.rbxlx
 ```
 
-CI (`.github/workflows/ci.yml`) runs all three on every PR.
+CI ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)) runs all of the above on every PR.
+
+## Tests
+
+Unit tests live under [`tests/`](./tests) and use a vendored TestEZ-compatible runner ([`tests/Lib/Runner.luau`](./tests/Lib/Runner.luau)). Specs cover:
+
+- `EconomyService.GrantCash` / `SpendCash` — rejects negative, fires `CashChanged`, persists via `MarkChanged`.
+- `GachaService.RollEgg` — pity timer triggers Epic+ at 50 / Mythic at 200, counters reset on Mythic+.
+- `DataService` — v1 → current schema migration is idempotent across repeat runs.
+- `MonetizationService.ProcessReceipt` — duplicate `PurchaseId` is a no-op (idempotent replay).
+- `AntiCheatService` — kicks above the cash-velocity threshold, ignores at/below.
+
+Run them locally:
+
+```bash
+rojo build tests.project.json -o build/ReefTycoonTests.rbxlx
+run-in-roblox --place build/ReefTycoonTests.rbxlx --script tests/TestRunner.server.luau
+```
+
+A headless smoke-test workflow ([`.github/workflows/test.yml`](./.github/workflows/test.yml)) wires the same `run-in-roblox` step into CI. Set the `STUDIO_RUNNER` repository variable to a self-hosted runner label that has Roblox Studio installed; without it the workflow is a no-op (so the default-runner CI stays green).
 
 ## Schema migrations
 

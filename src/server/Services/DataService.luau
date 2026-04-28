@@ -53,6 +53,7 @@ export type Profile = {
 		legendaryCount: number,
 		mythicCount: number,
 	},
+	processedReceipts: { [string]: number }, -- receiptId -> unix seconds when first applied
 	tutorialDone: boolean,
 	dailyStreak: number,
 	lastDailyClaimAt: number,
@@ -90,6 +91,7 @@ local function newProfile(): Profile
 			legendaryCount = 0,
 			mythicCount = 0,
 		},
+		processedReceipts = {},
 		tutorialDone = false,
 		dailyStreak = 0,
 		lastDailyClaimAt = 0,
@@ -110,6 +112,10 @@ local MIGRATIONS = {
 		p.gacha = p.gacha or { totalRolls = 0, rollsSinceEpicPlus = 0, rollsSinceMythic = 0 }
 		p.gacha.legendaryCount = p.gacha.legendaryCount or 0
 		p.gacha.mythicCount = p.gacha.mythicCount or 0
+	end,
+	-- v2 → v3: add processedReceipts for ProcessReceipt idempotency
+	[3] = function(p: any)
+		p.processedReceipts = p.processedReceipts or {}
 	end,
 }
 
@@ -133,6 +139,7 @@ local function migrate(profile: any): Profile
 	profile.tutorialDone = profile.tutorialDone or false
 	profile.dailyStreak = profile.dailyStreak or 0
 	profile.lastDailyClaimAt = profile.lastDailyClaimAt or 0
+	profile.processedReceipts = profile.processedReceipts or {}
 	return profile :: Profile
 end
 
@@ -190,6 +197,27 @@ end
 
 function DataService.GetProfile(player: Player): Profile?
 	return profiles[player.UserId]
+end
+
+-- ────────────────────────────────────────────────────────────────────────────
+-- Test-only seams. These are prefixed with _ so callers know they are
+-- internal. Real gameplay code must never touch them.
+-- ────────────────────────────────────────────────────────────────────────────
+
+function DataService._migrate(profile: any): Profile
+	return migrate(profile)
+end
+
+function DataService._newProfile(): Profile
+	return newProfile()
+end
+
+function DataService._setProfileForTest(player: Player, profile: Profile)
+	profiles[player.UserId] = profile
+end
+
+function DataService._clearProfileForTest(player: Player)
+	profiles[player.UserId] = nil
 end
 
 function DataService.WaitForProfile(player: Player, timeoutSec: number?): Profile?

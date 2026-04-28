@@ -16,12 +16,13 @@ jobs:
         uses: CompeyDev/setup-rokit@v0.1.2
 
       - name: Selene
-        run: selene src
+        run: selene src tests
 
       - name: StyLua
-        run: stylua --check src
+        run: stylua --check src tests
 
       - name: Rojo build (sanity)
         run: |
           mkdir -p build
           rojo build default.project.json -o build/ReefTycoon.rbxlx
+          rojo build tests.project.json -o build/ReefTycoonTests.rbxlx

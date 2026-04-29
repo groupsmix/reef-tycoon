@@ -22,6 +22,7 @@ local RunService = game:GetService("RunService")
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Signal = require(Shared:WaitForChild("Signal"))
+local DataMigrations = require(Shared:WaitForChild("DataMigrations"))
 
 export type FishStack = {
 	id: string, -- fish species id (matches FishData)
@@ -99,41 +100,8 @@ local function newProfile(): Profile
 	}
 end
 
--- Migrations are pure mutations from version N → N+1. They MUST be
--- idempotent — running them twice on the same profile must be safe.
-local MIGRATIONS = {
-	-- v1 → v2: add tutorialDone, dailyStreak, lastDailyClaimAt, gacha counters
-	[2] = function(p: any)
-		p.tutorialDone = p.tutorialDone or false
-		p.dailyStreak = p.dailyStreak or 0
-		p.lastDailyClaimAt = p.lastDailyClaimAt or 0
-		p.gacha = p.gacha or { totalRolls = 0, rollsSinceEpicPlus = 0, rollsSinceMythic = 0 }
-		p.gacha.legendaryCount = p.gacha.legendaryCount or 0
-		p.gacha.mythicCount = p.gacha.mythicCount or 0
-	end,
-}
-
 local function migrate(profile: any): Profile
-	local from = profile.schemaVersion or 1
-	for v = from + 1, Config.SCHEMA_VERSION do
-		local fn = MIGRATIONS[v]
-		if fn then
-			fn(profile)
-		end
-		profile.schemaVersion = v
-	end
-	-- Defensive defaults in case something hand-edited a save.
-	profile.prestigeMultiplier = 1 + (profile.prestigeLevel or 0) * Config.PRESTIGE_BONUS_PER_LEVEL
-	profile.gamepasses = profile.gamepasses or {}
-	profile.inventory = profile.inventory or {}
-	profile.placedTanks = profile.placedTanks or {}
-	profile.gacha = profile.gacha or { totalRolls = 0, rollsSinceEpicPlus = 0, rollsSinceMythic = 0 }
-	profile.gacha.legendaryCount = profile.gacha.legendaryCount or 0
-	profile.gacha.mythicCount = profile.gacha.mythicCount or 0
-	profile.tutorialDone = profile.tutorialDone or false
-	profile.dailyStreak = profile.dailyStreak or 0
-	profile.lastDailyClaimAt = profile.lastDailyClaimAt or 0
-	return profile :: Profile
+	return DataMigrations.run(profile, Config.SCHEMA_VERSION, Config.PRESTIGE_BONUS_PER_LEVEL) :: Profile
 end
 
 local function key(userId: number): string

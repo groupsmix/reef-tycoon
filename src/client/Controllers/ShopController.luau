@@ -17,7 +17,8 @@ local ShopController = {}
 
 local function makeButton(parent, text, y)
 	local btn = Instance.new("TextButton")
-	btn.Size = UDim2.new(1, -16, 0, 40)
+	-- 44px tall meets iOS / Android tap-target guidelines for mobile.
+	btn.Size = UDim2.new(1, -16, 0, 44)
 	btn.Position = UDim2.new(0, 8, 0, y)
 	btn.BackgroundColor3 = Color3.fromRGB(40, 60, 80)
 	btn.BorderSizePixel = 0
@@ -51,7 +52,9 @@ function ShopController.Mount(screen: ScreenGui, State)
 	toggle.Name = "ShopToggle"
 	toggle.AnchorPoint = Vector2.new(1, 0.5)
 	toggle.Position = UDim2.new(1, -12, 0.5, -120)
-	toggle.Size = UDim2.new(0, 84, 0, 84)
+	-- 64x64 minimum keeps the tap target above the 44px iOS guideline
+	-- with room for the SHOP label.
+	toggle.Size = UDim2.fromOffset(72, 72)
 	toggle.BackgroundColor3 = Color3.fromRGB(40, 80, 120)
 	toggle.Text = "SHOP"
 	toggle.Font = Enum.Font.GothamBlack
@@ -66,10 +69,16 @@ function ShopController.Mount(screen: ScreenGui, State)
 	panel.Name = "ShopPanel"
 	panel.AnchorPoint = Vector2.new(1, 0.5)
 	panel.Position = UDim2.new(1, -110, 0.5, 0)
-	panel.Size = UDim2.new(0, 360, 0, 480)
+	-- Scale-based with min/max so the shop fits both phones (360px wide)
+	-- and desktop (1920px wide) without overflow or comically tall panels.
+	panel.Size = UDim2.new(0.4, 0, 0.7, 0)
 	panel.BackgroundColor3 = Color3.fromRGB(25, 35, 50)
 	panel.Visible = false
 	panel.Parent = screen
+	local sizeCap = Instance.new("UISizeConstraint")
+	sizeCap.MinSize = Vector2.new(280, 360)
+	sizeCap.MaxSize = Vector2.new(420, 540)
+	sizeCap.Parent = panel
 	local corner2 = Instance.new("UICorner")
 	corner2.CornerRadius = UDim.new(0, 12)
 	corner2.Parent = panel

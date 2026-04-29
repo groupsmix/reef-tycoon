@@ -27,7 +27,7 @@ function InventoryController.Mount(screen: ScreenGui, State)
 	toggle.Name = "InventoryToggle"
 	toggle.AnchorPoint = Vector2.new(1, 0.5)
 	toggle.Position = UDim2.new(1, -12, 0.5, -20)
-	toggle.Size = UDim2.new(0, 84, 0, 84)
+	toggle.Size = UDim2.fromOffset(72, 72)
 	toggle.BackgroundColor3 = Color3.fromRGB(80, 60, 120)
 	toggle.Text = "FISH"
 	toggle.Font = Enum.Font.GothamBlack
@@ -41,10 +41,14 @@ function InventoryController.Mount(screen: ScreenGui, State)
 	local panel = Instance.new("Frame")
 	panel.AnchorPoint = Vector2.new(1, 0.5)
 	panel.Position = UDim2.new(1, -110, 0.5, 0)
-	panel.Size = UDim2.new(0, 360, 0, 480)
+	panel.Size = UDim2.new(0.4, 0, 0.7, 0)
 	panel.BackgroundColor3 = Color3.fromRGB(25, 35, 50)
 	panel.Visible = false
 	panel.Parent = screen
+	local sizeCap = Instance.new("UISizeConstraint")
+	sizeCap.MinSize = Vector2.new(280, 360)
+	sizeCap.MaxSize = Vector2.new(420, 540)
+	sizeCap.Parent = panel
 	local c2 = Instance.new("UICorner")
 	c2.CornerRadius = UDim.new(0, 12)
 	c2.Parent = panel

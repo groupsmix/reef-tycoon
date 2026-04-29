@@ -5,14 +5,15 @@
 	Anywhere else in the codebase, you ask EconomyService to grant or charge.
 	The client never sees these methods — it only renders mirrored values.
 
-	Audit invariant: deltas are always integers (cash) or non-negative
-	(gems). We refuse negative grants.
+	The rounding / non-negative invariants live in EconomyOps so they can
+	be unit-tested without a Roblox runtime.
 ]]
 
 local Players = game:GetService("Players")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Signal = require(Shared:WaitForChild("Signal"))
+local EconomyOps = require(Shared:WaitForChild("EconomyOps"))
 
 local DataService = require(script.Parent:WaitForChild("DataService"))
 
@@ -25,68 +26,57 @@ local function getProfile(player: Player)
 end
 
 function EconomyService.GrantCash(player: Player, amount: number, reason: string?): boolean
-	if amount < 0 then
-		return false
-	end
 	local profile = getProfile(player)
 	if not profile then
 		return false
 	end
-	local rounded = math.floor(amount + 0.5)
-	profile.cash += rounded
-	profile.lifetimeCash += rounded
-	EconomyService.CashChanged:Fire(player, profile.cash, rounded, reason)
+	local ok, delta = EconomyOps.grantCash(profile, amount)
+	if not ok then
+		return false
+	end
+	EconomyService.CashChanged:Fire(player, profile.cash, delta, reason)
 	DataService.MarkChanged(player)
 	return true
 end
 
 function EconomyService.SpendCash(player: Player, amount: number, reason: string?): boolean
-	if amount < 0 then
-		return false
-	end
 	local profile = getProfile(player)
 	if not profile then
 		return false
 	end
-	local rounded = math.floor(amount + 0.5)
-	if profile.cash < rounded then
+	local ok, delta = EconomyOps.spendCash(profile, amount)
+	if not ok then
 		return false
 	end
-	profile.cash -= rounded
-	EconomyService.CashChanged:Fire(player, profile.cash, -rounded, reason)
+	EconomyService.CashChanged:Fire(player, profile.cash, -delta, reason)
 	DataService.MarkChanged(player)
 	return true
 end
 
 function EconomyService.GrantGems(player: Player, amount: number, reason: string?): boolean
-	if amount < 0 then
-		return false
-	end
 	local profile = getProfile(player)
 	if not profile then
 		return false
 	end
-	local rounded = math.floor(amount + 0.5)
-	profile.gems += rounded
-	EconomyService.GemsChanged:Fire(player, profile.gems, rounded, reason)
+	local ok, delta = EconomyOps.grantGems(profile, amount)
+	if not ok then
+		return false
+	end
+	EconomyService.GemsChanged:Fire(player, profile.gems, delta, reason)
 	DataService.MarkChanged(player)
 	return true
 end
 
 function EconomyService.SpendGems(player: Player, amount: number, reason: string?): boolean
-	if amount < 0 then
-		return false
-	end
 	local profile = getProfile(player)
 	if not profile then
 		return false
 	end
-	local rounded = math.floor(amount + 0.5)
-	if profile.gems < rounded then
+	local ok, delta = EconomyOps.spendGems(profile, amount)
+	if not ok then
 		return false
 	end
-	profile.gems -= rounded
-	EconomyService.GemsChanged:Fire(player, profile.gems, -rounded, reason)
+	EconomyService.GemsChanged:Fire(player, profile.gems, -delta, reason)
 	DataService.MarkChanged(player)
 	return true
 end

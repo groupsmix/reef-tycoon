@@ -9,7 +9,7 @@
 local Config = {}
 
 Config.GAME_NAME = "Reef Tycoon"
-Config.GAME_VERSION = "0.2.0"
+Config.GAME_VERSION = "0.3.0"
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- DataStore

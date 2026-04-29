@@ -7,7 +7,7 @@ on:
 
 jobs:
   lint:
-    name: Lint & Build
+    name: Lint, Build, Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,7 +21,10 @@ jobs:
       - name: StyLua
         run: stylua --check src
 
-      - name: Rojo build (sanity)
+      - name: Rojo build (smoke / parse check)
         run: |
           mkdir -p build
           rojo build default.project.json -o build/ReefTycoon.rbxlx
+
+      - name: Unit tests (Lune)
+        run: lune run tests/run.luau

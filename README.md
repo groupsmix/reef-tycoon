@@ -2,7 +2,9 @@
 
 Idle / incremental aquarium tycoon for Roblox. Built solo with AI-assisted tooling. See [`design.md`](./design.md) for the full game design doc.
 
-> **Status (v0.2.0):** Production-ready scaffold. Server auto-builds the lobby (12 plots, pedestals, water, lighting), tanks render programmatically with animated fish, NPC visitors walk between tanks tipping cash, gacha cinematic with particles + camera shake + sound stingers, daily login reward, tutorial onboarding, server-wide Legendary marquee, anti-cheat (cash-velocity detection + audit log), schema-versioned saves with snapshot fallback, structured analytics, leaderstats + OrderedDataStore top-10, badges + sound system gracefully no-op when their asset IDs are 0.
+> **Status (v0.3.0):** Feature-complete pre-launch scaffold. Server auto-builds the lobby (12 plots, pedestals, water, lighting), tanks render programmatically with animated fish, NPC visitors walk between tanks tipping cash, gacha cinematic with particles + camera shake + sound stingers, daily login reward, tutorial onboarding, server-wide Legendary marquee, anti-cheat (cash-velocity detection + audit log), schema-versioned saves with snapshot fallback, idempotent receipt fulfillment, structured analytics, leaderstats + OrderedDataStore top-10 with client UI, badges + sound system gracefully no-op when their asset IDs are 0. Pure-logic services (economy, gacha pity, data migrations, anti-cheat thresholds, receipt dedup) are covered by unit tests run on every PR.
+>
+> **Before public launch:** create the gamepasses, dev products, badges, and sound IDs in Creator Hub and paste them into [`src/shared/Config.luau`](./src/shared/Config.luau). Without those IDs the relevant systems intentionally no-op. See [`docs/runbooks/`](./docs/runbooks) for live-ops procedures.
 
 ## Quickstart
 
@@ -85,22 +87,39 @@ src/
 - **Cube 4D fish meshes** (optional polish) — generate 30 species with a consistent prompt prefix, paste each `meshAssetId` into [`src/shared/FishData.luau`](./src/shared/FishData.luau). Without these, fish render as rarity-colored neon spheres with a glow PointLight (still feels alive thanks to the swim animation).
 - **Place settings** — `server size 12` is set by default. Enable `EnableStudioAccessToApiServices` in Studio if you want DataStores to work locally.
 
-## Lint + build locally
+## Lint + build + test locally
 
 ```bash
 selene src
 stylua --check src
 rojo build default.project.json -o build/ReefTycoon.rbxlx
+lune run tests/run.luau
 ```
 
-CI (`.github/workflows/ci.yml`) runs all three on every PR.
+CI (`.github/workflows/ci.yml`) runs all four on every PR.
+
+Unit tests live under `tests/specs/` and target the pure-logic modules in `src/shared/` (data migrations, gacha pity, anti-cheat thresholds, receipt idempotency, economy mutations, rate limiter, weighted random). They run under [Lune](https://github.com/lune-org/lune) — no Roblox runtime required. The framework lives in `tests/framework.luau` (~150 lines, TestEZ-shaped describe/it/expect).
 
 ## Schema migrations
 
-`DataService.luau` carries a `MIGRATIONS` table keyed by integer schema version. To bump the schema:
+The `MIGRATIONS` table lives in [`src/shared/DataMigrations.luau`](./src/shared/DataMigrations.luau) so it can be unit-tested without a Roblox runtime. To bump the schema:
 
 1. Increase `Config.SCHEMA_VERSION` by 1.
-2. Add a function under that key that mutates an old profile in-place, defaulting any new fields. Migrations must be idempotent.
-3. Update `newProfile()` to include the new defaults so fresh saves have them too.
+2. Add a function under that key in `DataMigrations.MIGRATIONS` that mutates an old profile in-place, defaulting any new fields. Migrations must be idempotent.
+3. Update `newProfile()` in `DataService.luau` to include the new defaults so fresh saves have them too.
+4. Add a test under `tests/specs/DataMigrations.spec.luau` that runs the migration twice and asserts no double-mutation.
 
-`migrate(profile)` walks `from + 1 .. CURRENT` and applies each in order, then bumps `profile.schemaVersion`.
+`DataMigrations.run(profile, targetVersion, prestigeBonus)` walks `from + 1 .. CURRENT` and applies each in order, then bumps `profile.schemaVersion` and re-applies defensive defaults.
+
+## Runbooks
+
+Live-ops procedures live under [`docs/runbooks/`](./docs/runbooks):
+- [DataStore failure](./docs/runbooks/datastore-failure.md)
+- [Anti-cheat bypass](./docs/runbooks/anticheat-bypass.md)
+- [Hot config update](./docs/runbooks/hot-config-update.md)
+
+## Legal
+
+- [LICENSE](./LICENSE) — All Rights Reserved (proprietary)
+- [PRIVACY.md](./PRIVACY.md) — what we store, how it's used
+- [TERMS.md](./TERMS.md) — acceptable use + Robux refund policy

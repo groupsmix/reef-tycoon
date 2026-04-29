@@ -21,6 +21,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local RateLimiter = require(Shared:WaitForChild("Util"):WaitForChild("RateLimiter"))
 local WeightedRandom = require(Shared:WaitForChild("Util"):WaitForChild("WeightedRandom"))
 local Validate = require(Shared:WaitForChild("Util"):WaitForChild("Validate"))
+local GachaPity = require(Shared:WaitForChild("GachaPity"))
 
 local DataService = require(script.Parent:WaitForChild("DataService"))
 local EconomyService = require(script.Parent:WaitForChild("EconomyService"))
@@ -123,14 +124,12 @@ function GachaService.RollEgg(
 	if force then
 		rolledRarity = rollRarity(luck, force)
 	else
-		profile.gacha.totalRolls += 1
-		profile.gacha.rollsSinceEpicPlus += 1
-		profile.gacha.rollsSinceMythic += 1
-
-		if profile.gacha.rollsSinceMythic >= Config.PITY_MYTHIC_AT then
+		local forced, isMythicForced =
+			GachaPity.bumpAndForcedRarity(profile.gacha, Config.PITY_MYTHIC_AT, Config.PITY_EPIC_PLUS_AT)
+		if forced == "Mythic" then
 			rolledRarity = "Mythic"
-			isPity = true
-		elseif profile.gacha.rollsSinceEpicPlus >= Config.PITY_EPIC_PLUS_AT then
+			isPity = isMythicForced
+		elseif forced == "Epic" then
 			rolledRarity = rollRarity(luck, "Epic")
 			isPity = true
 		else
@@ -139,11 +138,8 @@ function GachaService.RollEgg(
 	end
 
 	-- Pity bookkeeping
-	if RARITY_INDEX[rolledRarity] >= RARITY_INDEX.Epic then
-		profile.gacha.rollsSinceEpicPlus = 0
-	end
+	GachaPity.applyResultRarity(profile.gacha, RARITY_INDEX[rolledRarity], RARITY_INDEX.Epic, RARITY_INDEX.Mythic)
 	if RARITY_INDEX[rolledRarity] >= RARITY_INDEX.Mythic then
-		profile.gacha.rollsSinceMythic = 0
 		profile.gacha.mythicCount = (profile.gacha.mythicCount or 0) + 1
 	end
 	if rolledRarity == "Legendary" then

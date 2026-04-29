@@ -2,25 +2,52 @@
 --[[
 	MonetizationService — gamepass + dev product fulfillment.
 
-	On a successful dev product purchase, MarketplaceService.ProcessReceipt
-	must return PurchaseGranted. We grant the effect first, save, THEN
-	return — that way a server crash mid-grant still re-runs the
-	fulfillment next session.
+	Receipts are idempotent. We track every fulfilled receipt id per player
+	in a DataStore. If Roblox replays a receipt (server crash mid-grant,
+	flaky network), we short-circuit and return PurchaseGranted again
+	without double-granting the effect.
+
+	Order of operations on a receipt:
+		1. Look up the effect mapped to the ProductId.
+		2. Atomically claim the receipt id via ReceiptDedup.
+		3. If the claim is fresh, apply the effect.
+		4. Return PurchaseGranted regardless (Roblox will then mark it
+		   fulfilled and stop replaying).
 ]]
 
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
+local DataStoreService = game:GetService("DataStoreService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local GamepassData = require(Shared:WaitForChild("GamepassData"))
 local DevProductData = require(Shared:WaitForChild("DevProductData"))
+local ReceiptDedup = require(Shared:WaitForChild("ReceiptDedup"))
 
 local DataService = require(script.Parent:WaitForChild("DataService"))
 local EconomyService = require(script.Parent:WaitForChild("EconomyService"))
 local GachaService = require(script.Parent:WaitForChild("GachaService"))
 
 local MonetizationService = {}
+
+local receiptStore = DataStoreService:GetDataStore("ReefTycoon_Receipts_v1")
+
+local persistentStore: ReceiptDedup.Store = {
+	get = function(playerKey: string, receiptId: string): boolean
+		local ok, value = pcall(function()
+			return receiptStore:GetAsync(playerKey .. ":" .. receiptId)
+		end)
+		return ok and value == true
+	end,
+	set = function(playerKey: string, receiptId: string)
+		pcall(function()
+			receiptStore:SetAsync(playerKey .. ":" .. receiptId, true)
+		end)
+	end,
+}
+
+local dedup = ReceiptDedup.new(persistentStore)
 
 local function applyDevProductEffect(player: Player, effectId: string): boolean
 	local product = DevProductData.Products[effectId]
@@ -74,6 +101,13 @@ local function processReceipt(receiptInfo)
 	if not effectId then
 		warn(("[Monetization] unknown ProductId %s"):format(tostring(receiptInfo.ProductId)))
 		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+	local playerKey = "u_" .. tostring(receiptInfo.PlayerId)
+	local receiptId = tostring(receiptInfo.PurchaseId)
+	local fresh = dedup:Claim(playerKey, receiptId)
+	if not fresh then
+		-- Already fulfilled. Tell Roblox to stop replaying.
+		return Enum.ProductPurchaseDecision.PurchaseGranted
 	end
 	local ok = applyDevProductEffect(player, effectId)
 	if ok then
@@ -132,6 +166,10 @@ function MonetizationService.Init()
 	for _, p in Players:GetPlayers() do
 		task.spawn(refreshGamepasses, p)
 	end
+
+	Players.PlayerRemoving:Connect(function(player)
+		dedup:Forget("u_" .. tostring(player.UserId))
+	end)
 end
 
 function MonetizationService.Start() end

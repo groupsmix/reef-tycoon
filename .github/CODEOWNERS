@@ -1,0 +1,11 @@
+# PRs that touch the schema, save format, or monetization config require
+# explicit review from the owner. Other changes can self-merge per repo
+# branch protection rules.
+
+/src/shared/Config.luau           @groupsmix
+/src/shared/DataMigrations.luau   @groupsmix
+/src/server/Services/DataService.luau @groupsmix
+/src/server/Services/MonetizationService.luau @groupsmix
+/PRIVACY.md @groupsmix
+/TERMS.md @groupsmix
+/LICENSE @groupsmix

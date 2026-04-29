@@ -27,6 +27,8 @@ local TutorialController = require(Controllers:WaitForChild("TutorialController"
 local DailyRewardController = require(Controllers:WaitForChild("DailyRewardController"))
 local LegendaryMarqueeController = require(Controllers:WaitForChild("LegendaryMarqueeController"))
 local OfflineEarningsController = require(Controllers:WaitForChild("OfflineEarningsController"))
+local LeaderboardController = require(Controllers:WaitForChild("LeaderboardController"))
+local SettingsController = require(Controllers:WaitForChild("SettingsController"))
 
 local State = {
 	catalog = nil :: any,
@@ -39,7 +41,10 @@ local r = Remotes.Client()
 -- Build the persistent ScreenGui everyone hangs UI off.
 local screen = Instance.new("ScreenGui")
 screen.Name = "ReefTycoonGui"
-screen.IgnoreGuiInset = false
+-- IgnoreGuiInset = true so our HUD is positioned in absolute device-pixel
+-- space, not under Roblox's top bar on phones / iPads. Controllers are
+-- responsible for leaving room at the top.
+screen.IgnoreGuiInset = true
 screen.ResetOnSpawn = false
 screen.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screen.Parent = PlayerGui
@@ -66,6 +71,8 @@ DailyRewardController.Mount(screen, State)
 LegendaryMarqueeController.Mount(screen, State)
 OfflineEarningsController.Mount(screen, State)
 TutorialController.Mount(screen, State)
+LeaderboardController.Mount(screen, State, r)
+SettingsController.Mount(screen, State)
 
 -- Forward Mythic+ pull events to the GachaController for the cinematic.
 r.Events.GachaPullResult.OnClientEvent:Connect(function(result)

@@ -25,6 +25,7 @@ local RunService = game:GetService("RunService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
+local AntiCheatCheck = require(Shared:WaitForChild("AntiCheatCheck"))
 
 local DataService = require(script.Parent:WaitForChild("DataService"))
 local EconomyService = require(script.Parent:WaitForChild("EconomyService"))
@@ -75,16 +76,8 @@ local function recordAndCheck(player: Player)
 	if not prev then
 		return
 	end
-	local dt = now - prev.t
-	if dt <= 0 then
-		return
-	end
-	local delta = profile.cash - prev.cash
-	if delta <= 0 then
-		return
-	end
-	local rate = delta / dt
-	if rate > KICK_THRESHOLD then
+	local kick, rate, delta, dt = AntiCheatCheck.shouldKick(prev, cashHistory[player.UserId], KICK_THRESHOLD)
+	if kick then
 		warn(
 			("[AntiCheat] %s gained %d cash in %.2fs (%.0f/sec, threshold %d)"):format(
 				player.Name,

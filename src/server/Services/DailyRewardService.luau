@@ -23,6 +23,7 @@ local Validate = require(Shared:WaitForChild("Util"):WaitForChild("Validate"))
 local DataService = require(script.Parent:WaitForChild("DataService"))
 local EconomyService = require(script.Parent:WaitForChild("EconomyService"))
 local AntiCheatService = require(script.Parent:WaitForChild("AntiCheatService"))
+local QuestService = require(script.Parent:WaitForChild("QuestService"))
 
 local DailyRewardService = {}
 
@@ -91,6 +92,7 @@ function DailyRewardService.Claim(player: Player): boolean
 	profile.lastDailyClaimAt = os.time()
 	EconomyService.GrantGems(player, reward, "daily_reward_streak_" .. nextStreak)
 	DataService.MarkChanged(player)
+	QuestService.Track(player, "daily_claim", 1)
 	return true
 end
 

@@ -42,6 +42,7 @@ local AnalyticsService = require(Services:WaitForChild("AnalyticsService"))
 local AntiCheatService = require(Services:WaitForChild("AntiCheatService"))
 local DailyRewardService = require(Services:WaitForChild("DailyRewardService"))
 local LeaderboardService = require(Services:WaitForChild("LeaderboardService"))
+local QuestService = require(Services:WaitForChild("QuestService"))
 local SoundService = require(Services:WaitForChild("SoundService"))
 
 local function buildCatalog()
@@ -210,6 +211,11 @@ catalog = buildCatalog()
 EconomyService.Init()
 WorldService.Init()
 SoundService.Init()
+-- QuestService.Init connects to EconomyService.CashChanged, so it must
+-- run after EconomyService.Init. All services that call Track() into it
+-- are initialized below — QuestService itself has no dependency on them,
+-- so ordering here is fine.
+QuestService.Init()
 TankService.Init()
 TankRenderService.Init()
 PlacementService.Init()
@@ -276,6 +282,7 @@ DataService.Start()
 EconomyService.Start()
 WorldService.Start()
 SoundService.Start()
+QuestService.Start()
 TankService.Start()
 TankRenderService.Start()
 PlacementService.Start()

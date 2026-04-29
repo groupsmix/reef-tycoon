@@ -16,6 +16,7 @@ local AntiCheatService = require(script.Parent:WaitForChild("AntiCheatService"))
 
 local DataService = require(script.Parent:WaitForChild("DataService"))
 local EconomyService = require(script.Parent:WaitForChild("EconomyService"))
+local QuestService = require(script.Parent:WaitForChild("QuestService"))
 
 local TankService = {}
 
@@ -52,6 +53,7 @@ function TankService.Place(player: Player, tankId: string, pedestalIndex: number
 		fish = {},
 	})
 	DataService.MarkChanged(player)
+	QuestService.Track(player, "tanks_placed", 1)
 	return true
 end
 

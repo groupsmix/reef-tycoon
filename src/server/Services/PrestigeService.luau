@@ -17,6 +17,7 @@ local Validate = require(Shared:WaitForChild("Util"):WaitForChild("Validate"))
 
 local DataService = require(script.Parent:WaitForChild("DataService"))
 local AntiCheatService = require(script.Parent:WaitForChild("AntiCheatService"))
+local QuestService = require(script.Parent:WaitForChild("QuestService"))
 
 local PrestigeService = {}
 
@@ -78,6 +79,7 @@ function PrestigeService.Prestige(player: Player): boolean
 		})
 	end)
 
+	QuestService.Track(player, "prestige", 1)
 	return true
 end
 

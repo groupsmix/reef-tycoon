@@ -37,6 +37,8 @@ local FUNCTION_NAMES = {
 	"ClaimDaily",
 	"GetTopCash",
 	"MarkTutorialDone",
+	"GetQuests",
+	"ClaimQuest",
 }
 
 local Remotes = {}

@@ -26,6 +26,7 @@ local GachaPity = require(Shared:WaitForChild("GachaPity"))
 local DataService = require(script.Parent:WaitForChild("DataService"))
 local EconomyService = require(script.Parent:WaitForChild("EconomyService"))
 local AntiCheatService = require(script.Parent:WaitForChild("AntiCheatService"))
+local QuestService = require(script.Parent:WaitForChild("QuestService"))
 
 local GachaService = {}
 
@@ -159,6 +160,20 @@ function GachaService.RollEgg(
 	end
 
 	DataService.MarkChanged(player)
+
+	-- Quest scoring for every pull — eggs_pulled always, plus rarity-specific
+	-- counters for Epic+ / Legendary / Mythic tracks. Stays inside the same
+	-- RollEgg call so pity-granted rolls and mythic-egg purchases both count.
+	QuestService.Track(player, "eggs_pulled", 1)
+	if RARITY_INDEX[rolledRarity] >= RARITY_INDEX.Epic then
+		QuestService.Track(player, "epic_plus_rolled", 1)
+	end
+	if rolledRarity == "Legendary" then
+		QuestService.Track(player, "legendary_rolled", 1)
+	end
+	if rolledRarity == "Mythic" then
+		QuestService.Track(player, "mythic_rolled", 1)
+	end
 
 	-- Audit Mythic+ pulls for dupe-investigation.
 	if RARITY_INDEX[rolledRarity] >= RARITY_INDEX.Mythic then

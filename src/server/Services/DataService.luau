@@ -36,6 +36,34 @@ export type PlacedTank = {
 	fish: { string }, -- fish ids in this tank
 }
 
+export type QuestProgress = {
+	progress: number, -- accumulated counter
+	claimed: boolean, -- reward collected (implies completed)
+}
+
+export type QuestBucket = {
+	resetAt: number, -- unix seconds; when os.time() >= resetAt, rotate
+	assigned: { string }, -- quest ids active this period
+	progress: { [string]: QuestProgress }, -- by quest id
+}
+
+export type Quests = {
+	daily: QuestBucket,
+	weekly: QuestBucket,
+	totalCompleted: number, -- lifetime claimed quest count
+}
+
+export type EventParticipation = {
+	firstSeen: number, -- unix seconds the player first interacted with the event
+	lastClaimed: number, -- last reward-claim timestamp (0 if never)
+	progress: number, -- generic counter (pulls, tips, etc. depends on event)
+}
+
+export type Events = {
+	participation: { [string]: EventParticipation }, -- by event id
+	eventFishObtained: { [string]: boolean }, -- cosmetic record of event-only fish ever pulled
+}
+
 export type Profile = {
 	schemaVersion: number,
 	cash: number,
@@ -54,6 +82,8 @@ export type Profile = {
 		legendaryCount: number,
 		mythicCount: number,
 	},
+	quests: Quests,
+	events: Events,
 	tutorialDone: boolean,
 	dailyStreak: number,
 	lastDailyClaimAt: number,
@@ -90,6 +120,17 @@ local function newProfile(): Profile
 			rollsSinceMythic = 0,
 			legendaryCount = 0,
 			mythicCount = 0,
+		},
+		-- `resetAt = 0` is a sentinel meaning "rotate on first observation".
+		-- QuestService.RotateIfDue() will populate `assigned` / `progress`.
+		quests = {
+			daily = { resetAt = 0, assigned = {}, progress = {} },
+			weekly = { resetAt = 0, assigned = {}, progress = {} },
+			totalCompleted = 0,
+		},
+		events = {
+			participation = {},
+			eventFishObtained = {},
 		},
 		tutorialDone = false,
 		dailyStreak = 0,

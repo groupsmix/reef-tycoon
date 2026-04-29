@@ -24,6 +24,43 @@ DataMigrations.MIGRATIONS = {
 		p.gacha.legendaryCount = p.gacha.legendaryCount or 0
 		p.gacha.mythicCount = p.gacha.mythicCount or 0
 	end,
+
+	-- v2 → v3: add `quests` and `events` sub-tables.
+	-- Structure is intentionally minimal: QuestService / EventService will
+	-- populate `assigned` / `progress` on first rotation. We only need to
+	-- guarantee the containers exist so callers can index them without nil
+	-- checks.
+	[3] = function(p: any)
+		if type(p.quests) ~= "table" then
+			p.quests = { totalCompleted = 0 }
+		end
+		p.quests.totalCompleted = p.quests.totalCompleted or 0
+		if type(p.quests.daily) ~= "table" then
+			p.quests.daily = { resetAt = 0, assigned = {}, progress = {} }
+		end
+		if type(p.quests.weekly) ~= "table" then
+			p.quests.weekly = { resetAt = 0, assigned = {}, progress = {} }
+		end
+		for _, bucket in { p.quests.daily, p.quests.weekly } do
+			bucket.resetAt = bucket.resetAt or 0
+			if type(bucket.assigned) ~= "table" then
+				bucket.assigned = {}
+			end
+			if type(bucket.progress) ~= "table" then
+				bucket.progress = {}
+			end
+		end
+
+		if type(p.events) ~= "table" then
+			p.events = {}
+		end
+		if type(p.events.participation) ~= "table" then
+			p.events.participation = {}
+		end
+		if type(p.events.eventFishObtained) ~= "table" then
+			p.events.eventFishObtained = {}
+		end
+	end,
 }
 
 -- Defensive defaults applied after migrations finish. Safe to apply
@@ -39,6 +76,26 @@ function DataMigrations.applyDefaults(profile: any, prestigeBonusPerLevel: numbe
 	profile.tutorialDone = profile.tutorialDone or false
 	profile.dailyStreak = profile.dailyStreak or 0
 	profile.lastDailyClaimAt = profile.lastDailyClaimAt or 0
+	-- Quest / event containers are created by the v3 migration. We only
+	-- backfill them here if the profile is already at v3+ so we don't
+	-- accidentally manufacture v3 shape on a v2-targeted run.
+	if (profile.schemaVersion or 1) >= 3 then
+		if type(profile.quests) ~= "table" then
+			profile.quests = { daily = {}, weekly = {}, totalCompleted = 0 }
+		end
+		profile.quests.totalCompleted = profile.quests.totalCompleted or 0
+		if type(profile.quests.daily) ~= "table" then
+			profile.quests.daily = { resetAt = 0, assigned = {}, progress = {} }
+		end
+		if type(profile.quests.weekly) ~= "table" then
+			profile.quests.weekly = { resetAt = 0, assigned = {}, progress = {} }
+		end
+		if type(profile.events) ~= "table" then
+			profile.events = { participation = {}, eventFishObtained = {} }
+		end
+		profile.events.participation = profile.events.participation or {}
+		profile.events.eventFishObtained = profile.events.eventFishObtained or {}
+	end
 end
 
 function DataMigrations.run(profile: any, targetVersion: number, prestigeBonusPerLevel: number): any

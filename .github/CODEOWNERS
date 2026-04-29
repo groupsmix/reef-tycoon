@@ -1,0 +1,22 @@
+# CODEOWNERS — reviewers auto-requested on matching paths.
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-security/customizing-your-repository/about-code-owners
+#
+# Anything under src/, plus critical config, requires review by the repo
+# owner. Gameplay tunables (Config.luau) and save/load logic
+# (DataService.luau) are especially sensitive: bugs here wipe player
+# saves or break monetization, so they must NOT merge without review.
+
+# Default: repo owner reviews everything not matched below.
+*                                                   @simohaaaameddak2217-ux
+
+# Gameplay tunables — drop rates, prices, schema version, monetization IDs.
+/src/shared/Config.luau                             @simohaaaameddak2217-ux
+
+# Save/load lifecycle — DataStore keys, migrations, snapshot/fallback logic.
+/src/server/Services/DataService.luau               @simohaaaameddak2217-ux
+
+# Legal + policy docs.
+/LICENSE                                            @simohaaaameddak2217-ux
+/PRIVACY.md                                         @simohaaaameddak2217-ux
+/TERMS.md                                           @simohaaaameddak2217-ux
+/.github/CODEOWNERS                                 @simohaaaameddak2217-ux

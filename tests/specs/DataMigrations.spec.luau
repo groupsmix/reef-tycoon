@@ -54,4 +54,71 @@ return function(framework)
 			expect(type(p.placedTanks)):equal("table")
 		end)
 	end)
+
+	describe("DataMigrations.run v2 -> v3", function()
+		it("adds quests bucket with empty daily/weekly", function()
+			local p = v1Profile()
+			DataMigrations.run(p, 3, 0.10)
+			expect(p.schemaVersion):equal(3)
+			expect(type(p.quests)):equal("table")
+			expect(type(p.quests.daily)):equal("table")
+			expect(type(p.quests.weekly)):equal("table")
+			expect(p.quests.totalCompleted):equal(0)
+			expect(p.quests.daily.resetAt):equal(0)
+			expect(#p.quests.daily.assigned):equal(0)
+			expect(#p.quests.weekly.assigned):equal(0)
+		end)
+
+		it("adds events bucket with empty participation map", function()
+			local p = v1Profile()
+			DataMigrations.run(p, 3, 0.10)
+			expect(type(p.events)):equal("table")
+			expect(type(p.events.participation)):equal("table")
+			expect(type(p.events.eventFishObtained)):equal("table")
+		end)
+
+		it("preserves existing quest progress on rerun", function()
+			local p = v1Profile()
+			DataMigrations.run(p, 3, 0.10)
+			-- Simulate live state
+			p.quests.daily.resetAt = 1_000_000
+			p.quests.daily.assigned = { "DAILY_CASH_SMALL" }
+			p.quests.daily.progress = { DAILY_CASH_SMALL = { progress = 4_000, claimed = false } }
+			p.quests.totalCompleted = 7
+			p.events.participation = { SUMMER_FEST = { firstSeen = 12, lastClaimed = 0, progress = 3 } }
+
+			DataMigrations.run(p, 3, 0.10)
+
+			expect(p.schemaVersion):equal(3)
+			expect(p.quests.daily.resetAt):equal(1_000_000)
+			expect(p.quests.daily.assigned[1]):equal("DAILY_CASH_SMALL")
+			expect(p.quests.daily.progress.DAILY_CASH_SMALL.progress):equal(4_000)
+			expect(p.quests.totalCompleted):equal(7)
+			expect(p.events.participation.SUMMER_FEST.progress):equal(3)
+		end)
+
+		it("upgrades a v2 profile in one shot", function()
+			local p = v1Profile()
+			DataMigrations.run(p, 2, 0.10)
+			-- p is now schemaVersion 2 with no quests/events.
+			expect(p.quests):beNil()
+			expect(p.events):beNil()
+			DataMigrations.run(p, 3, 0.10)
+			expect(p.schemaVersion):equal(3)
+			expect(type(p.quests)):equal("table")
+			expect(type(p.events)):equal("table")
+		end)
+
+		it("upgrades v1 → v3 in one call", function()
+			local p = v1Profile()
+			DataMigrations.run(p, 3, 0.10)
+			expect(p.schemaVersion):equal(3)
+			-- v2 fields still present
+			expect(p.tutorialDone):beFalse()
+			expect(p.dailyStreak):equal(0)
+			-- v3 fields present
+			expect(type(p.quests)):equal("table")
+			expect(type(p.events)):equal("table")
+		end)
+	end)
 end
